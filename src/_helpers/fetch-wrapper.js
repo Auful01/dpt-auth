@@ -1,5 +1,6 @@
 import config from 'config';
 import { accountService } from '@/_services';
+import Cookies from 'js-cookie';
 
 export const fetchWrapper = {
     get,
@@ -8,31 +9,44 @@ export const fetchWrapper = {
     delete: _delete
 }
 
+var cookie = "sidita=" + Cookies.get('sidita');
+
 function get(url) {
     const requestOptions = {
         method: 'GET',
-        headers: authHeader(url)
+        headers: { 'Cookies': cookie, ...authHeader(url) },
     };
     return fetch(url, requestOptions).then(handleResponse);
 }
 
 function post(url, body) {
+
+    var headers = {
+        'Content-Type': 'application/json',
+        ...authHeader(url)
+    };
+
+    if (Cookies.get('sidita')) {
+        headers['Cookies'] = cookie;
+    }
+
     const requestOptions = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeader(url) },
+        headers: headers,
         credentials: 'include',
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
     };
     return fetch(url, requestOptions).then(handleResponse);
 }
 
 function put(url, body) {
+    console.log("cookies:", Cookies.get('sidita'));
     const requestOptions = {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader(url) },
         body: JSON.stringify(body)
     };
-    return fetch(url, requestOptions).then(handleResponse);    
+    return fetch(url, requestOptions).then(handleResponse);
 }
 
 // prefixed with underscored because delete is a reserved word in javascript
@@ -61,7 +75,7 @@ function authHeader(url) {
 function handleResponse(response) {
     return response.text().then(text => {
         const data = text && JSON.parse(text);
-        
+
         if (!response.ok) {
             if ([401, 403].includes(response.status) && accountService.userValue) {
                 // auto logout if 401 Unauthorized or 403 Forbidden response returned from api
